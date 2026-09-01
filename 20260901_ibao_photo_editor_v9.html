@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>iBao 商品圖編輯器</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:13px;background:#f8f7f5;color:#1a1a1a;height:100vh;overflow:hidden}
@@ -80,7 +79,6 @@ canvas#cv{display:block;box-shadow:0 2px 20px rgba(0,0,0,.15)}
 .reset-link{font-size:10px;color:#bbb;background:none;border:none;cursor:pointer;padding:0;font-family:inherit;text-decoration:underline}
 .smsg{font-size:11px;min-height:14px;text-align:center;margin-top:4px}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js" onerror="console.warn('heic2any not loaded')"></script>
 </head>
 <body>
 
@@ -262,6 +260,10 @@ canvas#cv{display:block;box-shadow:0 2px 20px rgba(0,0,0,.15)}
             <input type="text" id="fileName" placeholder="請輸入檔名" class="fl" style="margin:0">
             <span id="extLbl">.jpg</span>
           </div>
+        </div>
+        <div class="fl" style="margin-top:6px">
+          <label style="font-size:11px;color:#666">Drive 資料夾 ID（選填，留空存根目錄）</label>
+          <input type="text" id="folderId" placeholder="貼上資料夾 ID…" style="font-size:12px;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;color:#1a1a1a;padding:6px 9px;width:100%;font-family:inherit">
         </div>
         <div class="out-row" style="margin-top:6px">
           <button class="out-btn on" id="oJpg" onclick="setExt('jpg',this)">JPG</button>
@@ -567,7 +569,7 @@ function _draw(){
       var text=(brand&&pkg)?brand+'  '+pkg:(brand||pkg);
       var textY=+document.getElementById('sTextY').value;
       var fs=Math.round(44*viewScale);
-      ctx.font='400 '+fs+'px "Playfair Display",Georgia,serif';
+      ctx.font='400 '+fs+'px "Georgia","Times New Roman",serif';
       var tw=ctx.measureText(text).width;
       var th=fs;
       var tx=(dW-tw)/2;
@@ -617,7 +619,7 @@ function doSave(target){
     if(brand||pkg){
       var text=(brand&&pkg)?brand+'  '+pkg:(brand||pkg);
       var textY=+document.getElementById('sTextY').value;
-      ctx.font='400 44px "Playfair Display",Georgia,serif';
+      ctx.font='400 44px "Georgia","Times New Roman",serif';
       var tw=ctx.measureText(text).width;
       var th=44;
       var tx=(outW-tw)/2;
@@ -661,7 +663,9 @@ function doSave(target){
 
 function uploadToDrive(blob,name,msg){
   msg.style.color='#888';msg.textContent='上傳中…';
+  var folderId=document.getElementById('folderId').value.trim();
   var meta={name:name+'.'+outExt,mimeType:outExt==='png'?'image/png':'image/jpeg'};
+  if(folderId) meta.parents=[folderId];
   var form=new FormData();
   form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
   form.append('file',blob);
@@ -839,6 +843,7 @@ function setBg(m,btn){
 window.addEventListener('resize',function(){if(img)draw();});
 document.getElementById('sizeTag').textContent='1080×1080';
 </script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script src="https://accounts.google.com/gsi/client" async defer crossorigin="anonymous"></script>
 </body>
 </html>
