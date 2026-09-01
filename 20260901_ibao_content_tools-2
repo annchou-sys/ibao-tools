@@ -1,1 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iBao 商品文字工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:13px;background:#f8f7f5;color:#1a1a1a}
+
+/* Tab 列 */
+.tab-bar{background:#fff;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;padding:0 20px;height:48px;gap:0}
+.tab-bar h1{font-size:13px;font-weight:600;letter-spacing:.04em;margin-right:24px;white-space:nowrap}
+.tab-btn{padding:0 18px;height:48px;border:none;background:transparent;cursor:pointer;font-size:12px;color:#888;font-family:inherit;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.tab-btn.on{color:#1a1a1a;font-weight:500;border-bottom-color:#1a1a1a}
+.tab-btn:hover{color:#555}
+.tab-panel{display:none;padding:24px 20px;max-width:760px;margin:0 auto}
+.tab-panel.on{display:block}
+
+/* 共用表單樣式 */
+.form-group{background:#fff;border:1px solid #ddd;border-radius:6px;padding:14px;margin-bottom:10px}
+.form-group label{font-size:10px;color:#888;letter-spacing:1px;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase}
+.form-group input,.form-group textarea{width:100%;border:1px solid #e0e0e0;border-radius:4px;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;color:#333}
+.form-group input:focus,.form-group textarea:focus{border-color:#b89a6a}
+.form-group .hint{font-size:10px;color:#b89a6a;margin-top:4px}
+.actions{display:flex;gap:8px;margin:16px 0;flex-wrap:wrap}
+.btn-gen{background:#1a1a1a;color:#fff;border:none;border-radius:5px;padding:9px 20px;font-size:12px;font-family:inherit;cursor:pointer;letter-spacing:.5px}
+.btn-gen:hover{background:#333}
+.btn-copy{background:#f0ede8;color:#333;border:1px solid #ccc;border-radius:5px;padding:9px 20px;font-size:12px;font-family:inherit;cursor:pointer;display:none}
+.btn-copy:hover{background:#e8e5e0}
+.copy-ok{font-size:11px;color:#b89a6a;opacity:0;transition:opacity .3s;align-self:center}
+.output-section{display:none;margin-bottom:20px}
+.output-label{font-size:10px;color:#888;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase}
+textarea.code{width:100%;height:160px;border:1px solid #ddd;border-radius:5px;padding:10px;font-size:10px;font-family:monospace;color:#444;resize:vertical;outline:none;background:#fff}
+.preview-section{display:none}
+.preview-section h2{font-size:11px;color:#888;margin-bottom:10px;font-weight:normal;letter-spacing:1px;text-transform:uppercase}
+
+/* 問題卡片 widget 預覽 */
+.qs-scene{position:relative;width:100%!important;max-width:520px;aspect-ratio:1/1;margin:0 auto;overflow:hidden;background:#b5a090;font-family:Georgia,'Noto Serif TC',serif}
+.qs-scene img{position:absolute;width:100%;height:100%;object-fit:cover;object-position:center}
+.qs-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.22)}
+.qs-header{position:absolute;bottom:44px;left:0;right:0;text-align:center;opacity:0;transform:translateY(8px);transition:opacity .4s ease,transform .4s ease}
+.qs-title{font-size:11px!important;letter-spacing:3px;color:#fff;font-family:-apple-system,sans-serif;text-transform:uppercase}
+.qs-brand{position:absolute;bottom:18px;left:24px;font-size:10px!important;letter-spacing:3px;color:#fff;opacity:.7;font-family:-apple-system,sans-serif}
+.qs-ibao{position:absolute;bottom:18px;right:24px;font-size:10px!important;letter-spacing:3px;color:#fff;opacity:.7;font-family:-apple-system,sans-serif}
+.qs-card{position:absolute;background:rgba(255,255,255,0.93);padding:11px 15px!important;width:52%!important;opacity:0;transform:translateX(-18px);transition:opacity .4s ease,transform .4s ease}
+.qs-card.qs-r{text-align:right;transform:translateX(18px)}
+.qs-card.qs-on,.qs-header.qs-on{opacity:1!important;transform:translate(0)!important}
+.qs-num{font-family:Georgia,serif;font-style:italic;transform:skewX(-8deg);display:inline-block;font-size:14px!important;color:#1a1a1a;margin-right:5px!important;vertical-align:2px}
+.qs-num-r{font-family:Georgia,serif;font-style:italic;transform:skewX(-8deg);display:inline-block;font-size:14px!important;color:#1a1a1a;margin-left:5px!important;vertical-align:2px}
+.qs-line{display:inline-block;width:14px;border-bottom:.5px solid rgba(0,0,0,0.25);vertical-align:baseline;margin-right:6px!important}
+.qs-line-r{display:inline-block;width:14px;border-bottom:.5px solid rgba(0,0,0,0.25);vertical-align:baseline;margin-left:6px!important}
+.qs-text{font-size:13px!important;line-height:1.5!important;color:#1a1a1a!important;display:inline;vertical-align:baseline}
+.qs-c1{top:15%;left:5%}.qs-c2{top:40%;right:5%;left:auto}.qs-c3{top:63%;left:5%}
+.prev-btns{text-align:center;margin-top:8px;display:flex;gap:6px;justify-content:center}
+.prev-btns button{font-size:11px;padding:5px 14px;border-radius:4px;cursor:pointer;font-family:inherit}
+
+/* 規格表 */
+.row2{display:flex;gap:10px}.row2 .form-group{flex:1}
+.shared-row{display:flex;gap:6px;margin-bottom:5px}
+.shared-row input{font-size:11px;padding:5px 7px}
+.shared-row input:first-child{flex:0 0 90px}
+.shared-row input:last-child{flex:1}
+.add-btn,.del-btn{font-size:10px;padding:3px 8px;cursor:pointer;border-radius:3px;font-family:inherit;border:1px solid #ccc;background:#f5f5f5}
+.add-btn:hover{background:#e8e8e8}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer crossorigin="anonymous"></script>
+</head>
+<body>
+
+<div class="tab-bar">
+  <h1>iBao 商品文字工具</h1>
+  <button class="tab-btn on" onclick="switchTab(0,this)">動態問題卡片</button>
+  <button class="tab-btn" onclick="switchTab(1,this)">尺寸規格表</button>
+</div>
+
+<!-- Tab 0: 動態問題卡片產生器 -->
+<div class="tab-panel on" id="tab0">
+  <div class="form-group">
+    <label>底圖（Google Drive 連結或圖片網址）</label>
+    <input type="text" id="imgUrl" placeholder="https://drive.google.com/file/d/...">
+    <div class="hint" id="urlHint"></div>
+  </div>
+  <div class="form-group">
+    <label>包款名稱（ABOUT 後面的文字）</label>
+    <input type="text" id="bagName" placeholder="CONSTANCE">
+  </div>
+  <div class="form-group">
+    <label>問題 1（左側）</label>
+    <input type="text" id="q1" placeholder="怎麼撐才不會變型？">
+  </div>
+  <div class="form-group">
+    <label>問題 2（右側）</label>
+    <input type="text" id="q2" placeholder="內袋怎麼選才最適合？">
+  </div>
+  <div class="form-group">
+    <label>問題 3（左側）</label>
+    <input type="text" id="q3" placeholder="裡面顧好了，外在也能有保護嗎？">
+  </div>
+  <div class="actions">
+    <button class="btn-gen" onclick="generateWidget()">產生 HTML</button>
+    <button class="btn-copy" id="btnCopyWidget" onclick="copyWidget()">複製 HTML</button>
+    <span class="copy-ok" id="copyOkWidget">✓ 已複製</span>
+  </div>
+  <div class="output-section" id="widgetOutput">
+    <div class="output-label">貼入 CYB 自訂 HTML 區塊</div>
+    <textarea class="code" id="widgetCode" readonly></textarea>
+  </div>
+  <div class="preview-section" id="widgetPreview">
+    <h2>預覽</h2>
+    <div id="previewWidget"></div>
+    <div class="prev-btns">
+      <button onclick="previewPlay()" style="background:#1a1a1a;color:#fff;border:none">▶ 播放</button>
+      <button onclick="previewReset()" style="background:#fff;border:1px solid #ddd;color:#888">↺ 重置</button>
+    </div>
+    <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="widgetFileName" placeholder="填檔名（必填）" style="flex:1;font-size:12px;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;padding:6px 9px;font-family:inherit;color:#1a1a1a">
+        <span style="font-size:11px;color:#aaa">.jpg</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="saveWidgetLocal()" style="flex:1;padding:7px;font-size:11px;border:1px solid #ccc;border-radius:6px;background:#f0ede8;cursor:pointer;font-family:inherit">↓ 存到電腦</button>
+        <button onclick="saveWidgetDrive()" style="flex:1;padding:7px;font-size:11px;border:none;border-radius:6px;background:#4285f4;color:#fff;cursor:pointer;font-family:inherit">▲ 存到 Drive</button>
+      </div>
+      <div id="widgetSaveMsg" style="font-size:11px;min-height:14px;text-align:center"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 1: 尺寸規格表產生器 -->
+<div class="tab-panel" id="tab1">
+  <div style="max-width:700px;margin:0 auto">
+  <p style="font-size:11px;color:#888;margin-bottom:16px">填入資料，產出 CYB 三 Tab 規格表嵌入碼</p>
+
+  <!-- 基本資料 -->
+  <div class="form-group">
+    <label>基本資料</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <input type="text" id="bagFull" placeholder="包款全名（如 CLASSIC FLAP 17）">
+      <input type="text" id="seriesName" placeholder="系列名（如 CLASSIC FLAP）">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <select id="bagType" style="border:1px solid #e0e0e0;border-radius:4px;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;color:#333">
+        <option>方型包</option><option>梯型包</option><option>水桶型包</option>
+        <option>多層型包</option><option>托特型包</option><option>薄型包</option><option>特殊型包</option>
+      </select>
+      <select id="sizeRange" style="border:1px solid #e0e0e0;border-radius:4px;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;color:#333">
+        <option>20cm 以下</option><option>21-26cm</option><option>27-31cm</option>
+        <option>32-36cm</option><option>37-50cm</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Tab1 塑型愛包枕 -->
+  <div class="form-group">
+    <label>TAB 1 — 塑型愛包枕</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+      <input type="text" id="p1Model" placeholder="型號（如 CC17）">
+      <select id="p1Core" style="border:1px solid #e0e0e0;border-radius:4px;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;color:#333">
+        <option>竹炭記憶棉</option><option>竹炭絲棉</option>
+      </select>
+      <input type="text" id="p1Weight" placeholder="克重（如 50g）">
+    </div>
+    <input type="text" id="p1Dim" placeholder="尺寸 cm（如 W15 D6 H8）" style="width:100%;border:1px solid #e0e0e0;border-radius:4px;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;color:#333;margin-bottom:8px">
+    <div style="font-size:10px;color:#888;margin-bottom:5px;font-weight:600;letter-spacing:1px">適用包款</div>
+    <div id="p1SharedRows">
+      <div class="shared-row">
+        <input type="text" placeholder="品牌" class="p1brand">
+        <input type="text" placeholder="包款（分號分隔）" class="p1bags">
+        <button class="del-btn" onclick="this.parentElement.remove()">−</button>
+      </div>
+    </div>
+    <button class="add-btn" onclick="addSharedRow('p1')" style="margin-top:6px">＋ 新增品牌</button>
+  </div>
+
+  <!-- Tab2 JOLIE 喬莉包 -->
+  <div class="form-group">
+    <label>TAB 2 — JOLIE 喬莉包</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+      <input type="text" id="p2Model" placeholder="型號（如 JC17-C）">
+      <select id="p2Shape" style="border:1px solid #e0e0e0;border-radius:4px;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;color:#333">
+        <option>平口款</option><option>半月款</option><option>雲朵款</option>
+        <option>翅膀款</option><option>圓底款</option><option>弧底款</option><option>外縫款</option>
+      </select>
+      <input type="text" id="p2Weight" placeholder="克重（如 35g）">
+    </div>
+    <input type="text" id="p2Dim" placeholder="尺寸 cm（如 W15.5 D5.5 H9）" style="width:100%;border:1px solid #e0e0e0;border-radius:4px;padding:7px 9px;font-size:12px;font-family:inherit;outline:none;color:#333;margin-bottom:8px">
+    <div style="font-size:10px;color:#888;margin-bottom:5px;font-weight:600;letter-spacing:1px">適用包款</div>
+    <div id="p2SharedRows">
+      <div class="shared-row">
+        <input type="text" placeholder="品牌" class="p2brand">
+        <input type="text" placeholder="包款（分號分隔）" class="p2bags">
+        <button class="del-btn" onclick="this.parentElement.remove()">−</button>
+      </div>
+    </div>
+    <button class="add-btn" onclick="addSharedRow('p2')" style="margin-top:6px">＋ 新增品牌</button>
+  </div>
+
+  <!-- Tab3 同系列尺寸 -->
+  <div class="form-group">
+    <label>TAB 3 — 同系列其他尺寸</label>
+    <div id="seriesRowsSpec">
+      <div class="shared-row" style="gap:5px">
+        <input type="text" placeholder="包款" style="flex:2">
+        <input type="text" placeholder="枕型號" style="flex:1">
+        <input type="text" placeholder="枕尺寸" style="flex:1.5">
+        <input type="text" placeholder="袋型號" style="flex:1">
+        <input type="text" placeholder="袋尺寸" style="flex:1.5">
+        <label style="display:flex;align-items:center;gap:3px;font-size:10px;white-space:nowrap;flex-shrink:0"><input type="radio" name="curSpec" checked> ◀</label>
+        <button class="del-btn" onclick="this.parentElement.remove()">−</button>
+      </div>
+    </div>
+    <button class="add-btn" onclick="addSeriesRowSpec()" style="margin-top:6px">＋ 新增尺寸</button>
+  </div>
+
+  <div class="actions">
+    <button class="btn-gen" onclick="generateSpec2()">產生規格表 HTML</button>
+    <button class="btn-copy" id="btnCopySpec" onclick="copySpec()">複製 HTML</button>
+    <span class="copy-ok" id="copyOkSpec">✓ 已複製</span>
+  </div>
+  <div class="output-section" id="specOutput">
+    <div class="output-label">貼入 CYB 自訂 HTML 區塊</div>
+    <textarea class="code" id="specCode" readonly></textarea>
+  </div>
+  <div class="preview-section" id="specPreview">
+    <h2>預覽</h2>
+    <div id="previewSpec"></div>
+    <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="specFileName" placeholder="填檔名（必填）" style="flex:1;font-size:12px;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;padding:6px 9px;font-family:inherit;color:#1a1a1a">
+        <span style="font-size:11px;color:#aaa">_tab1/2/3.jpg</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="saveSpecLocal()" style="flex:1;padding:7px;font-size:11px;border:1px solid #ccc;border-radius:6px;background:#f0ede8;cursor:pointer;font-family:inherit">↓ 存到電腦（3張）</button>
+        <button onclick="saveSpecDrive()" style="flex:1;padding:7px;font-size:11px;border:none;border-radius:6px;background:#4285f4;color:#fff;cursor:pointer;font-family:inherit">▲ 存到 Drive（3張）</button>
+      </div>
+      <div id="specSaveMsg" style="font-size:11px;min-height:14px;text-align:center"></div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<script>
+function switchTab(n,btn){
+  document.querySelectorAll('.tab-panel').forEach(function(p,i){p.classList.toggle('on',i===n);});
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+}
+
+/* ===== 動態問題卡片 ===== */
+function convertUrl(url){
+  var m=url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)||url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if(m) return 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w800';
+  return url;
+}
+document.getElementById('imgUrl').addEventListener('input',function(){
+  var c=convertUrl(this.value.trim());
+  document.getElementById('urlHint').textContent=(c!==this.value.trim())?'✓ 已自動轉換 Drive 連結':'';
+});
+
+function generateWidget(){
+  var raw=document.getElementById('imgUrl').value.trim();
+  var imgSrc=convertUrl(raw);
+  var bagName=document.getElementById('bagName').value.trim().toUpperCase()||'ABOUT';
+  var q1=document.getElementById('q1').value.trim();
+  var q2=document.getElementById('q2').value.trim();
+  var q3=document.getElementById('q3').value.trim();
+  var css='<style>.qs-scene{position:relative;width:100%!important;max-width:560px;aspect-ratio:1/1;margin:0 auto;overflow:hidden;background:#b5a090;font-family:Georgia,serif}.qs-scene img{position:absolute;width:100%;height:100%;object-fit:cover}.qs-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.22)}.qs-header{position:absolute;bottom:44px;left:0;right:0;text-align:center;opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s}.qs-title{font-size:11px!important;letter-spacing:3px;color:#fff;font-family:-apple-system,sans-serif;text-transform:uppercase}.qs-brand{position:absolute;bottom:18px;left:24px;font-size:10px!important;letter-spacing:3px;color:#fff;opacity:.7;font-family:-apple-system,sans-serif}.qs-ibao{position:absolute;bottom:18px;right:24px;font-size:10px!important;letter-spacing:3px;color:#fff;opacity:.7;font-family:-apple-system,sans-serif}.qs-card{position:absolute;background:rgba(255,255,255,0.93);padding:11px 15px!important;width:52%!important;opacity:0;transform:translateX(-18px);transition:opacity .4s,transform .4s}.qs-card.qs-r{text-align:right;transform:translateX(18px)}.qs-card.qs-on,.qs-header.qs-on{opacity:1!important;transform:translate(0)!important}.qs-num{font-family:Georgia,serif;font-style:italic;display:inline-block;font-size:14px!important;color:#1a1a1a;margin-right:5px!important;vertical-align:2px}.qs-num-r{font-family:Georgia,serif;font-style:italic;display:inline-block;font-size:14px!important;color:#1a1a1a;margin-left:5px!important;vertical-align:2px}.qs-line{display:inline-block;width:14px;border-bottom:.5px solid rgba(0,0,0,0.25);vertical-align:baseline;margin-right:6px!important}.qs-line-r{display:inline-block;width:14px;border-bottom:.5px solid rgba(0,0,0,0.25);vertical-align:baseline;margin-left:6px!important}.qs-text{font-size:13px!important;line-height:1.5!important;color:#1a1a1a!important;display:inline;vertical-align:baseline}.qs-c1{top:15%;left:5%}.qs-c2{top:40%;right:5%;left:auto}.qs-c3{top:63%;left:5%}</style>';
+  var html=css+'\n<div class="qs-scene" id="qs-s"><img src="'+imgSrc+'" alt="'+bagName+'"><div class="qs-overlay"></div><div class="qs-header" id="qs-h"><span class="qs-title">ABOUT '+bagName+' · 你最想知道的</span></div><div class="qs-brand">'+bagName+'</div><div class="qs-ibao">IBAO</div><div class="qs-card qs-c1" id="qs1"><span class="qs-num">1</span><span class="qs-line"></span><span class="qs-text">'+q1+'</span></div><div class="qs-card qs-c2 qs-r" id="qs2"><span class="qs-text">'+q2+'</span><span class="qs-line-r"></span><span class="qs-num-r">2</span></div><div class="qs-card qs-c3" id="qs3"><span class="qs-num">3</span><span class="qs-line"></span><span class="qs-text">'+q3+'</span></div></div>';
+  html+='\n<script>(function(){var ids=["qs-h","qs1","qs2","qs3"],timers=[];function r(){timers.forEach(function(t){clearTimeout(t);});timers=[];ids.forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove("qs-on");});}function p(){r();ids.forEach(function(id,i){timers.push(setTimeout(function(){var e=document.getElementById(id);if(e)e.classList.add("qs-on");},i*550+300));});}var s=document.getElementById("qs-s");if("IntersectionObserver"in window){var o=new IntersectionObserver(function(e){if(e[0].isIntersecting)p();else r();},{threshold:0.3});o.observe(s);}else p();})();<\/script>';
+  document.getElementById('widgetCode').value=html;
+  document.getElementById('widgetOutput').style.display='block';
+  document.getElementById('btnCopyWidget').style.display='inline-block';
+  var pw=document.getElementById('previewWidget');
+  pw.innerHTML='<div class="qs-scene" id="pqs-s"><img src="'+imgSrc+'" alt="'+bagName+'"><div class="qs-overlay"></div><div class="qs-header" id="pqs-h"><span class="qs-title">ABOUT '+bagName+' · 你最想知道的</span></div><div class="qs-brand">'+bagName+'</div><div class="qs-ibao">IBAO</div><div class="qs-card qs-c1" id="pqs1"><span class="qs-num">1</span><span class="qs-line"></span><span class="qs-text">'+q1+'</span></div><div class="qs-card qs-c2 qs-r" id="pqs2"><span class="qs-text">'+q2+'</span><span class="qs-line-r"></span><span class="qs-num-r">2</span></div><div class="qs-card qs-c3" id="pqs3"><span class="qs-num">3</span><span class="qs-line"></span><span class="qs-text">'+q3+'</span></div></div>';
+  document.getElementById('widgetPreview').style.display='block';
+  setTimeout(previewPlay,400);
+}
+
+var prevTimers=[];
+function previewReset(){prevTimers.forEach(function(t){clearTimeout(t);});prevTimers=[];['pqs-h','pqs1','pqs2','pqs3'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('qs-on');});}
+function previewPlay(){previewReset();['pqs-h','pqs1','pqs2','pqs3'].forEach(function(id,i){prevTimers.push(setTimeout(function(){var e=document.getElementById(id);if(e)e.classList.add('qs-on');},i*550+300));});}
+
+/* ===== 規格表 ===== */
+function addSharedRow(prefix){
+  var d=document.createElement('div');d.className='shared-row';
+  d.innerHTML='<input type="text" placeholder="品牌" class="'+prefix+'brand"><input type="text" placeholder="包款（分號分隔）" class="'+prefix+'bags"><button class="del-btn" onclick="this.parentElement.remove()">−</button>';
+  document.getElementById(prefix+'SharedRows').appendChild(d);
+}
+function addSeriesRowSpec(){
+  var d=document.createElement('div');d.className='shared-row';d.style.gap='5px';
+  d.innerHTML='<input type="text" placeholder="包款" style="flex:2"><input type="text" placeholder="枕型號" style="flex:1"><input type="text" placeholder="枕尺寸" style="flex:1.5"><input type="text" placeholder="袋型號" style="flex:1"><input type="text" placeholder="袋尺寸" style="flex:1.5"><label style="display:flex;align-items:center;gap:3px;font-size:10px;white-space:nowrap;flex-shrink:0"><input type="radio" name="curSpec"> ◀</label><button class="del-btn" onclick="this.parentElement.remove()">−</button>';
+  document.getElementById('seriesRowsSpec').appendChild(d);
+}
+function getShared(prefix){
+  var result=[];
+  document.querySelectorAll('.'+prefix+'brand').forEach(function(el){
+    var b=el.value.trim(),p=el.nextElementSibling.value.trim();
+    if(b||p) result.push({brand:b,bags:p});
+  });
+  return result;
+}
+function getSeriesSpec(){
+  var result=[];
+  document.querySelectorAll('#seriesRowsSpec .shared-row').forEach(function(row){
+    var ins=row.querySelectorAll('input[type=text]');
+    var rb=row.querySelector('input[type=radio]');
+    if(ins.length>=5) result.push({name:ins[0].value.trim(),pModel:ins[1].value.trim(),pDim:ins[2].value.trim(),jModel:ins[3].value.trim(),jDim:ins[4].value.trim(),current:rb&&rb.checked});
+  });
+  return result;
+}
+function makeSharedTbl(data){
+  var h='<table><tbody><tr><th class="left" style="line-height:1.5!important;width:110px;padding:8px!important;">品牌</th><th class="left" style="line-height:1.5!important;padding:8px!important;">包款</th></tr>';
+  data.forEach(function(r){h+='<tr><td class="brand" style="line-height:1.5!important;padding:8px!important;">'+r.brand+'</td><td class="shared" style="line-height:1.5!important;padding:8px!important;">'+r.bags+'</td></tr>';});
+  return h+'</tbody></table>';
+}
+function makeSeriesTbl(data){
+  var h='<table><tbody><tr><th class="left" style="line-height:1.5!important;width:125px;padding:8px!important;">包款</th><th style="line-height:1.5!important;padding:8px!important;">枕型號</th><th style="line-height:1.5!important;padding:8px!important;">枕尺寸 cm</th><th class="divider" style="line-height:1.5!important;padding:8px!important;">袋型號</th><th style="line-height:1.5!important;padding:8px!important;">袋尺寸 cm</th></tr>';
+  data.forEach(function(r){
+    var bg=r.current?' style="background:#efefef;"':'';
+    var arrow=r.current?' ◀':'';
+    h+='<tr'+bg+'><td class="label" style="line-height:1.5!important;padding:8px!important;">'+r.name+arrow+'</td><td class="model" style="line-height:1.5!important;padding:8px!important;">'+r.pModel+'</td><td class="dim" style="line-height:1.5!important;padding:8px!important;">'+r.pDim+'</td><td class="model divider" style="line-height:1.5!important;padding:8px!important;">'+r.jModel+'</td><td class="dim" style="line-height:1.5!important;padding:8px!important;">'+r.jDim+'</td></tr>';
+  });
+  return h+'</tbody></table>';
+}
+function generateSpec2(){
+  var bagFull=document.getElementById('bagFull').value.trim();
+  var seriesName=document.getElementById('seriesName').value.trim();
+  var bagType=document.getElementById('bagType').value;
+  var sizeRange=document.getElementById('sizeRange').value;
+  var p1Model=document.getElementById('p1Model').value.trim();
+  var p1Core=document.getElementById('p1Core').value;
+  var p1Weight=document.getElementById('p1Weight').value.trim();
+  var p1Dim=document.getElementById('p1Dim').value.trim();
+  var p2Model=document.getElementById('p2Model').value.trim();
+  var p2Shape=document.getElementById('p2Shape').value;
+  var p2Weight=document.getElementById('p2Weight').value.trim();
+  var p2Dim=document.getElementById('p2Dim').value.trim();
+  if(!bagFull||!p1Model||!p2Model){alert('請至少填包款名、枕型號、袋型號');return;}
+  var uid=bagFull.toLowerCase().replace(/[^a-z0-9]/g,'');
+  var p1id='cf-'+uid+'-p1',p2id='cf-'+uid+'-p2',p3id='cf-'+uid+'-p3';
+  var p1S=getShared('p1'),p2S=getShared('p2'),sData=getSeriesSpec();
+  var css='<style>.cf-wrapper{max-width:760px!important;margin:0 auto!important;background:#fff;border:1.5px solid #222}.cf-header{padding:10px 16px 6px!important;font-size:13px!important;font-weight:700;letter-spacing:2px;color:#111;margin-bottom:0!important}.cf-tabs-row{display:flex;padding:10px 14px 0;gap:4px;border-bottom:1.5px solid #222;background:#fff;width:fit-content;min-width:100%}.cf-tab{padding:6px 12px 8px;font-size:10px!important;font-weight:700;letter-spacing:1px;cursor:pointer;background:#fff;color:#bbb;border:1.5px solid #ddd;border-bottom:none;white-space:nowrap;position:relative;bottom:-1.5px;text-decoration:none;display:inline-block}.cf-tab.cf-active{color:#111;border-color:#222;border-bottom:1.5px solid #fff;z-index:1}.cf-panel{display:none;padding:16px 16px 20px}.cf-panel.cf-active{display:block}.cf-panel-title{font-size:11px!important;font-weight:700;letter-spacing:2px;color:#111;padding-bottom:8px;border-bottom:1px solid #e0e0e0;margin-bottom:14px!important}.cf-id-row{display:flex;flex-wrap:wrap;margin-bottom:14px!important;border:1.5px solid #ddd}.cf-id-item{flex:1 1 auto;padding:8px 12px;border-right:1px solid #e8e8e8;border-bottom:1px solid #e8e8e8;min-width:100px}.cf-id-item:last-child{border-right:none}.cf-id-key{font-size:9px!important;font-weight:700;letter-spacing:1.5px;color:#999;margin-bottom:4px!important}.cf-id-val{font-size:12px!important;font-weight:700;color:#111;line-height:1.4!important}.cf-sec-label{font-size:11px!important;font-weight:700;letter-spacing:2px;color:#111;margin:12px 0 6px!important}.cf-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}table{width:100%!important;border-collapse:collapse;min-width:300px}th{background:#555;color:#fff;font-size:10px!important;font-weight:700;letter-spacing:1px;text-align:center;vertical-align:middle;padding:6px 10px;border-right:1px solid #666;white-space:nowrap}th:last-child{border-right:none}th.left{text-align:left}td{padding:6px 10px;border:1px solid #e8e8e8;vertical-align:middle;font-size:12px!important;line-height:1.5!important;color:#111}tr:nth-child(even) td{background:#f9f9f9}td.divider,th.divider{border-left:2px solid #555!important}td.label{font-weight:700;white-space:nowrap;font-size:12px!important}td.model{font-family:"Courier New",monospace;font-size:11px!important;color:#222;white-space:nowrap}td.dim{font-size:11px!important;color:#444;white-space:nowrap}td.brand{font-size:12px!important;color:#444;white-space:nowrap;text-align:left}td.shared{font-size:12px!important;color:#111;line-height:1.5!important;text-align:left}.cf-footer-note{margin-top:10px!important;padding-top:8px;border-top:1px solid #e0e0e0;font-size:12px!important;color:#444;line-height:1.5!important}.cf-footer-note a{color:#444;text-decoration:underline}@media(max-width:480px){.cf-id-item{min-width:80px;padding:7px 10px}}</style>';
+  var html=css+'<div class="cf-wrapper"><div class="cf-header">商品規格｜適用款式</div>'
+    +'<div class="cf-tabs-row">'
+    +'<a href="javascript:void(0)" onclick="cfSw(this,\''+p1id+'\');return false" class="cf-tab cf-active">塑型愛包枕</a> '
+    +'<a href="javascript:void(0)" onclick="cfSw(this,\''+p2id+'\');return false" class="cf-tab">JOLIE 喬莉包</a> '
+    +'<a href="javascript:void(0)" onclick="cfSw(this,\''+p3id+'\');return false" class="cf-tab">同系列尺寸</a>'
+    +'</div>'
+    +'<div class="cf-panel cf-active" id="'+p1id+'">'
+    +'<div class="cf-panel-title">'+bagFull+' — 塑型愛包枕</div>'
+    +'<div class="cf-id-row">'
+    +'<div class="cf-id-item"><div class="cf-id-key">型號</div><div class="cf-id-val">'+p1Model+'</div></div>'
+    +'<div class="cf-id-item"><div class="cf-id-key">包型</div><div class="cf-id-val">'+bagType+'</div></div>'
+    +'<div class="cf-id-item"><div class="cf-id-key">尺寸區間</div><div class="cf-id-val">'+sizeRange+'</div></div>'
+    +'<div class="cf-id-item"><div class="cf-id-key">枕心</div><div class="cf-id-val">'+p1Core+'</div></div>'
+    +'<div class="cf-id-item"><div class="cf-id-key">尺寸 cm</div><div class="cf-id-val">'+p1Dim+'</div></div>'
+    +'<div class="cf-id-item"><div class="cf-id-key">克重</div><div class="cf-id-val">'+p1Weight+'</div></div>'
+    +'</div>';
+  if(p1S.length) html+='<div class="cf-sec-label">適用包款</div><div class="cf-table-wrap">'+makeSharedTbl(p1S)+'</div>';
+  html+='<div class="cf-footer-note">下單前請核對包內尺寸（非包外尺寸）。有疑問加 LINE@ <a href="https://lin.ee/ZR0ayeo" target="_blank">@ibaolovebags</a> 或預約台北門市試放。</div></div>'
+    +'<div class="cf-panel" id="'+p2id+'">'
+    +'<div class="cf-panel-title">'+bagFull+' — JOLIE 喬莉包</div>'
+    +'<div class="cf-id-row">'
+    +'<div class="cf-id-item"><div class="cf-id-key">型號</div><div class="cf-id-val">'+p2Model+'</div></div>'
+    +'<div class="cf-id-item"><div class="cf-id-key">包型</div><div class="cf-id-val">'+bagType+'</div></div>'
+    +'<div class="cf-id-item"><div class="cf-id-key">尺寸區間</div><div class="cf-id-val">'+sizeRange+'</div></div>'
+    +'<div class="cf-id-item"><div class="cf-id-key">形狀</div><div class="cf-id-val">'+p2Shape+'</div></div>'
+    +'<div class="cf-id-item"><div class="cf-id-key">尺寸 cm</div><div class="cf-id-val">'+p2Dim+'</div></div>'
+    +'<div class="cf-id-item"><div class="cf-id-key">克重</div><div class="cf-id-val">'+p2Weight+'</div></div>'
+    +'</div>';
+  if(p2S.length) html+='<div class="cf-sec-label">適用包款</div><div class="cf-table-wrap">'+makeSharedTbl(p2S)+'</div>';
+  html+='<div class="cf-footer-note">下單前請核對包內尺寸（非包外尺寸）。有疑問加 LINE@ <a href="https://lin.ee/ZR0ayeo" target="_blank">@ibaolovebags</a> 或預約台北門市試放。</div></div>'
+    +'<div class="cf-panel" id="'+p3id+'">'
+    +'<div class="cf-panel-title">'+seriesName+' — 同系列其他尺寸</div>'
+    +'<div class="cf-table-wrap">'+makeSeriesTbl(sData)+'</div>'
+    +'<div class="cf-footer-note">◀ 目前商品頁款式。其他尺寸請至對應商品頁選購。</div>'
+    +'</div></div>'
+    +'<script>function cfSw(el,id){var w=el.closest(".cf-wrapper");w.querySelectorAll(".cf-tab").forEach(function(t){t.classList.remove("cf-active");});w.querySelectorAll(".cf-panel").forEach(function(p){p.classList.remove("cf-active");});el.classList.add("cf-active");document.getElementById(id).classList.add("cf-active");}convertUrls = undefined;<\/script>';
+  document.getElementById('specCode').value=html;
+  document.getElementById('specOutput').style.display='block';
+  document.getElementById('btnCopySpec').style.display='inline-block';
+  document.getElementById('previewSpec').innerHTML=html;
+  var scripts=document.getElementById('previewSpec').querySelectorAll('script');
+  scripts.forEach(function(s){var ns=document.createElement('script');ns.textContent=s.textContent;s.parentNode.replaceChild(ns,s);});
+  document.getElementById('specPreview').style.display='block';
+}
+function copySpec(){navigator.clipboard.writeText(document.getElementById('specCode').value).then(function(){var m=document.getElementById('copyOkSpec');m.style.opacity='1';setTimeout(function(){m.style.opacity='0';},2000);});}
+
+function copyWidget(){navigator.clipboard.writeText(document.getElementById('widgetCode').value).then(function(){var m=document.getElementById('copyOkWidget');m.style.opacity='1';setTimeout(function(){m.style.opacity='0';},2000);});}
+
+/* ===== 規格表 ===== */
+function addBrandRow(){
+  var d=document.createElement('div');d.className='shared-row';
+  d.innerHTML='<input type="text" placeholder="品牌（如 Hermès）"><input type="text" placeholder="包款（如 Kelly 25）"><button class="del-btn" onclick="delBrandRow(this)">−</button>';
+  document.getElementById('brandRows').appendChild(d);
+}
+function delBrandRow(btn){var rows=document.querySelectorAll('#brandRows .shared-row');if(rows.length>1)btn.parentElement.remove();}
+function addSeriesRow(){
+  var d=document.createElement('div');d.className='shared-row';
+  d.innerHTML='<input type="text" placeholder="尺寸（如 25cm）"><input type="text" placeholder="型號（如 KL-25）"><input type="checkbox" style="width:auto;flex-shrink:0;margin:0 4px"><button class="del-btn" onclick="delSeriesRow(this)">−</button>';
+  document.getElementById('seriesRows').appendChild(d);
+}
+function delSeriesRow(btn){var rows=document.querySelectorAll('#seriesRows .shared-row');if(rows.length>1)btn.parentElement.remove();}
+
+function generateSpec(){
+  var name=document.getElementById('sp-name').value.trim()||'包款名稱';
+  var model=document.getElementById('sp-model').value.trim()||'-';
+  var pillow=document.getElementById('sp-pillow').value.trim()||'-';
+  var shape=document.getElementById('sp-shape').value.trim()||'-';
+  var size=document.getElementById('sp-size').value.trim()||'-';
+  var weight=document.getElementById('sp-weight').value.trim()||'-';
+
+  var brands=[];
+  document.querySelectorAll('#brandRows .shared-row').forEach(function(row){
+    var ins=row.querySelectorAll('input');
+    var b=ins[0].value.trim(),p=ins[1].value.trim();
+    if(b||p) brands.push({brand:b,pkg:p});
+  });
+
+  var series=[];
+  document.querySelectorAll('#seriesRows .shared-row').forEach(function(row){
+    var ins=row.querySelectorAll('input[type=text]');
+    var cb=row.querySelector('input[type=checkbox]');
+    var s=ins[0].value.trim(),m=ins[1].value.trim();
+    if(s||m) series.push({size:s,model:m,current:cb&&cb.checked});
+  });
+
+  var brandHtml=brands.map(function(b){
+    return '<tr><td style="padding:5px 10px!important;font-size:12px!important;color:#555!important;border-bottom:1px solid #f0f0f0!important;white-space:nowrap">'+b.brand+'</td><td style="padding:5px 10px!important;font-size:12px!important;color:#1a1a1a!important;border-bottom:1px solid #f0f0f0!important">'+b.pkg+'</td></tr>';
+  }).join('');
+
+  var seriesHtml=series.map(function(s){
+    var cur=s.current?' <span style="color:#b89a6a!important;font-size:10px!important">◀ 本頁</span>':'';
+    return '<tr><td style="padding:5px 10px!important;font-size:12px!important;border-bottom:1px solid #f0f0f0!important">'+s.size+'</td><td style="padding:5px 10px!important;font-size:12px!important;border-bottom:1px solid #f0f0f0!important">'+s.model+cur+'</td></tr>';
+  }).join('');
+
+  var specRows=[
+    ['型號',model],['枕心',pillow],['形狀',shape],['尺寸（W×D×H）',size+'cm'],['重量',weight+'g']
+  ].map(function(r){
+    return '<tr><td style="padding:7px 12px!important;font-size:11px!important;color:#888!important;background:#fafafa!important;border-bottom:1px solid #eee!important;white-space:nowrap;width:80px">'+r[0]+'</td><td style="padding:7px 12px!important;font-size:13px!important;font-weight:500!important;border-bottom:1px solid #eee!important">'+r[1]+'</td></tr>';
+  }).join('');
+
+  var html='<style>.cf-w{max-width:600px;margin:0 auto;font-family:-apple-system,sans-serif}.cf-tabs{display:flex;border-bottom:1px solid #ddd}.cf-tab{padding:10px 16px;font-size:11px;letter-spacing:1px;cursor:pointer;color:#888;background:none;border:none;border-bottom:2px solid transparent;font-family:inherit}.cf-tab.cf-active{color:#1a1a1a;border-bottom-color:#1a1a1a;font-weight:600}.cf-panel{display:none;padding:16px 0}.cf-panel.cf-active{display:block}.cf-title{font-size:13px;font-weight:600;letter-spacing:2px;color:#1a1a1a;margin-bottom:12px}</style>'
+    +'<div class="cf-w">'
+    +'<div class="cf-tabs"><button class="cf-tab cf-active" onclick="cfSw(this,\'cf-p1\')">規格</button><button class="cf-tab" onclick="cfSw(this,\'cf-p2\')">適用包款</button><button class="cf-tab" onclick="cfSw(this,\'cf-p3\')">系列尺寸</button></div>'
+    +'<div class="cf-panel cf-active" id="cf-p1"><div class="cf-title">'+name+'</div><table style="width:100%;border-collapse:collapse">'+specRows+'</table></div>'
+    +'<div class="cf-panel" id="cf-p2"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="padding:5px 10px!important;font-size:10px!important;color:#aaa!important;text-align:left!important;font-weight:normal!important">品牌</th><th style="padding:5px 10px!important;font-size:10px!important;color:#aaa!important;text-align:left!important;font-weight:normal!important">包款</th></tr></thead><tbody>'+brandHtml+'</tbody></table></div>'
+    +'<div class="cf-panel" id="cf-p3"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="padding:5px 10px!important;font-size:10px!important;color:#aaa!important;text-align:left!important;font-weight:normal!important">尺寸</th><th style="padding:5px 10px!important;font-size:10px!important;color:#aaa!important;text-align:left!important;font-weight:normal!important">型號</th></tr></thead><tbody>'+seriesHtml+'</tbody></table></div>'
+    +'</div>'
+    +'<script>function cfSw(el,id){var w=el.closest(".cf-w");w.querySelectorAll(".cf-tab").forEach(function(t){t.classList.remove("cf-active");});w.querySelectorAll(".cf-panel").forEach(function(p){p.classList.remove("cf-active");});el.classList.add("cf-active");document.getElementById(id).classList.add("cf-active");}<\/script>';
+
+  document.getElementById('specCode').value=html;
+  document.getElementById('specOutput').style.display='block';
+  document.getElementById('btnCopySpec').style.display='inline-block';
+  document.getElementById('previewSpec').innerHTML=html;
+  var scripts=document.getElementById('previewSpec').querySelectorAll('script');
+  scripts.forEach(function(s){var ns=document.createElement('script');ns.textContent=s.textContent;s.parentNode.replaceChild(ns,s);});
+  document.getElementById('specPreview').style.display='block';
+}
+
+function copySpec(){navigator.clipboard.writeText(document.getElementById('specCode').value).then(function(){var m=document.getElementById('copyOkSpec');m.style.opacity='1';setTimeout(function(){m.style.opacity='0';},2000);});}
+
+/* ===== 截圖存檔共用 ===== */
+var _gToken = null;
+var GOOG_CLIENT_ID = '999765668036-hgeritojptqndlh2fi2ht005jant5ai5.apps.googleusercontent.com';
+var SPEC_FOLDER_ID = '';
+
+function getGToken(cb){
+  if(_gToken){cb(_gToken);return;}
+  var client=google.accounts.oauth2.initTokenClient({
+    client_id:GOOG_CLIENT_ID,
+    scope:'https://www.googleapis.com/auth/drive.file',
+    callback:function(r){if(r.error)return;_gToken=r.access_token;cb(_gToken);}
+  });
+  client.requestAccessToken();
+}
+
+function uploadBlob(blob,name,msg,cb){
+  msg.style.color='#888';msg.textContent='上傳中…';
+  var meta={name:name+'.jpg',mimeType:'image/jpeg'};
+  if(SPEC_FOLDER_ID) meta.parents=[SPEC_FOLDER_ID];
+  var form=new FormData();
+  form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+  form.append('file',blob);
+  fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{
+    method:'POST',headers:{Authorization:'Bearer '+_gToken},body:form
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.id){msg.style.color='#2e7d32';if(cb)cb(d);else msg.textContent='✓ 已上傳';}
+    else{msg.style.color='#c0392b';msg.textContent='上傳失敗';}
+  }).catch(function(){msg.style.color='#c0392b';msg.textContent='上傳失敗';});
+}
+
+/* 動態問題卡片截圖 */
+function captureWidget(cb){
+  var el=document.getElementById('previewWidget');
+  if(!el||!el.firstChild){alert('請先產生並播放預覽');return;}
+  previewPlay();
+  setTimeout(function(){
+    html2canvas(el.firstChild,{useCORS:true,scale:2,backgroundColor:'#fff'}).then(cb);
+  },2500);
+}
+
+function saveWidgetLocal(){
+  var name=document.getElementById('widgetFileName').value.trim();
+  var msg=document.getElementById('widgetSaveMsg');
+  if(!name){msg.style.color='#c0392b';msg.textContent='請先填寫檔名';return;}
+  msg.textContent='截圖中…';
+  captureWidget(function(canvas){
+    var a=document.createElement('a');
+    a.download=name+'.jpg';
+    a.href=canvas.toDataURL('image/jpeg',0.95);
+    a.click();
+    msg.style.color='#2e7d32';msg.textContent='✓ 已下載';
+  });
+}
+
+function saveWidgetDrive(){
+  var name=document.getElementById('widgetFileName').value.trim();
+  var msg=document.getElementById('widgetSaveMsg');
+  if(!name){msg.style.color='#c0392b';msg.textContent='請先填寫檔名';return;}
+  msg.textContent='準備中…';
+  getGToken(function(){
+    captureWidget(function(canvas){
+      canvas.toBlob(function(blob){uploadBlob(blob,name,msg);});
+    });
+  });
+}
+
+/* 規格表截圖（3個Tab各一張）*/
+function captureSpecTabs(cb){
+  var wrapper=document.querySelector('#previewSpec .cf-wrapper');
+  if(!wrapper){alert('請先產生規格表預覽');return;}
+  var tabs=wrapper.querySelectorAll('.cf-tab');
+  var panels=wrapper.querySelectorAll('.cf-panel');
+  var results=[];
+  function next(i){
+    if(i>=tabs.length){cb(results);return;}
+    tabs.forEach(function(t){t.classList.remove('cf-active');});
+    panels.forEach(function(p){p.classList.remove('cf-active');});
+    tabs[i].classList.add('cf-active');
+    panels[i].classList.add('cf-active');
+    setTimeout(function(){
+      html2canvas(wrapper,{useCORS:true,scale:2,backgroundColor:'#fff'}).then(function(cv){
+        results.push(cv);next(i+1);
+      });
+    },300);
+  }
+  next(0);
+}
+
+function saveSpecLocal(){
+  var name=document.getElementById('specFileName').value.trim();
+  var msg=document.getElementById('specSaveMsg');
+  if(!name){msg.style.color='#c0392b';msg.textContent='請先填寫檔名';return;}
+  msg.textContent='截圖中…';
+  captureSpecTabs(function(canvases){
+    var labels=['tab1','tab2','tab3'];
+    canvases.forEach(function(cv,i){
+      var a=document.createElement('a');
+      a.download=name+'_'+labels[i]+'.jpg';
+      a.href=cv.toDataURL('image/jpeg',0.95);
+      a.click();
+    });
+    msg.style.color='#2e7d32';msg.textContent='✓ 已下載 3 張';
+  });
+}
+
+function saveSpecDrive(){
+  var name=document.getElementById('specFileName').value.trim();
+  var msg=document.getElementById('specSaveMsg');
+  if(!name){msg.style.color='#c0392b';msg.textContent='請先填寫檔名';return;}
+  msg.textContent='準備中…';
+  getGToken(function(){
+    captureSpecTabs(function(canvases){
+      var labels=['tab1','tab2','tab3'];
+      var done=0;
+      canvases.forEach(function(cv,i){
+        cv.toBlob(function(blob){
+          uploadBlob(blob,name+'_'+labels[i],{style:{color:'#888'},textContent:''},function(){
+            done++;
+            if(done===canvases.length){msg.style.color='#2e7d32';msg.textContent='✓ 已上傳 3 張到 Drive';}
+          });
+        },'image/jpeg',0.95);
+      });
+    });
+  });
+}
+
+</script>
+</body>
+</html>
 
