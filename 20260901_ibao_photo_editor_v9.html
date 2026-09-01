@@ -1,1 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iBao 商品圖編輯器</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:13px;background:#f8f7f5;color:#1a1a1a;height:100vh;overflow:hidden}
+.header{background:#fff;border-bottom:1px solid #e8e8e8;padding:10px 20px;display:flex;align-items:center;gap:10px;height:48px}
+.header h1{font-size:14px;font-weight:600;letter-spacing:.04em}
+.header .tag{font-size:10px;color:#999;background:#f0f0f0;padding:2px 8px;border-radius:10px}
+.layout{display:grid;grid-template-columns:200px 1fr 260px;height:calc(100vh - 48px)}
+
+/* 左側步驟 */
+.steps{background:#fff;border-right:1px solid #e8e8e8;display:flex;flex-direction:column;overflow-y:auto}
+.step-item{padding:12px 14px;border-bottom:1px solid #f0f0f0;cursor:pointer;transition:background .15s}
+.step-item:hover{background:#fafafa}
+.step-item.active{background:#f5f4f1;border-left:3px solid #1a1a1a}
+.step-num{font-size:10px;color:#aaa;margin-bottom:2px;letter-spacing:.04em}
+.step-name{font-size:12px;font-weight:500;color:#1a1a1a}
+.step-item.done .step-name{color:#666}
+.step-item.done::after{content:'✓';float:right;font-size:11px;color:#2e7d32}
+
+/* 中間預覽 */
+.preview-area{background:#e8e7e4;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.canvas-container{position:relative;cursor:grab}
+.canvas-container:active{cursor:grabbing}
+canvas#cv{display:block;box-shadow:0 2px 20px rgba(0,0,0,.15)}
+.empty-hint{text-align:center;color:#aaa}
+.empty-hint .icon{font-size:40px;opacity:.4;margin-bottom:10px}
+.empty-hint p{font-size:12px}
+.zoom-bar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.9);border:1px solid #ddd;border-radius:20px;padding:4px 12px;display:flex;align-items:center;gap:8px;font-size:11px;color:#666}
+.zoom-bar button{background:none;border:none;cursor:pointer;font-size:14px;color:#666;padding:0 2px}
+.zoom-bar button:hover{color:#1a1a1a}
+
+/* 右側工具 */
+.tools{background:#fff;border-left:1px solid #e8e8e8;overflow-y:auto;display:flex;flex-direction:column}
+.tool-panel{display:none;flex-direction:column;flex:1}
+.tool-panel.active{display:flex}
+.section{padding:14px 16px;border-bottom:1px solid #f0f0f0}
+.sec-title{font-size:10px;font-weight:600;color:#aaa;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.fl{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.fl label{font-size:11px;color:#666}
+.fl input[type=text]{font-size:12px;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;color:#1a1a1a;padding:6px 9px;width:100%;font-family:inherit}
+.slr{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.slr label{font-size:11px;color:#666;width:44px;flex-shrink:0}
+.slr input[type=range]{flex:1;accent-color:#1a1a1a}
+.slr span{font-size:11px;color:#aaa;width:28px;text-align:right}
+.btn-row{display:flex;gap:5px;flex-wrap:wrap}
+.btn{padding:5px 10px;font-size:11px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;cursor:pointer;color:#555;font-family:inherit;transition:all .15s;white-space:nowrap}
+.btn:hover{background:#f5f5f5}
+.btn.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.size-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.size-card{padding:8px;border:1px solid #e0e0e0;border-radius:7px;cursor:pointer;text-align:center;transition:all .15s}
+.size-card:hover{border-color:#aaa}
+.size-card.on{border-color:#1a1a1a;background:#fafafa}
+.size-card .ratio{font-size:13px;font-weight:500;color:#1a1a1a;margin-bottom:1px}
+.size-card .dim{font-size:9px;color:#aaa}
+.url-row{display:flex;gap:5px}
+.url-row input{flex:1;min-width:0;font-size:11px;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;padding:5px 8px;font-family:inherit}
+.url-row button{flex-shrink:0;padding:5px 10px;font-size:11px;border:1px solid #ccc;border-radius:6px;background:#f0ede8;cursor:pointer;font-family:inherit}
+.upload-area{border:1.5px dashed #ddd;border-radius:8px;background:#fafafa;padding:18px;text-align:center;cursor:pointer;color:#aaa;font-size:12px;transition:all .15s}
+.upload-area:hover{border-color:#aaa;background:#f5f5f5}
+.dmsg{font-size:10px;min-height:13px;margin-top:3px}
+.ok{color:#2e7d32}.ng{color:#c0392b}
+.next-btn{margin:14px 16px;padding:9px;font-size:12px;border:none;border-radius:8px;background:#1a1a1a;color:#fff;cursor:pointer;font-family:inherit;font-weight:500;width:calc(100% - 32px)}
+.next-btn:hover{background:#333}
+.save-btn{padding:9px;font-size:12px;border:none;border-radius:8px;background:#1a1a1a;color:#fff;cursor:pointer;font-family:inherit;font-weight:500;width:100%;margin-top:4px}
+.save-btn:hover{background:#333}
+.drive-btn{padding:9px;font-size:12px;border:none;border-radius:8px;background:#4285f4;color:#fff;cursor:pointer;font-family:inherit;font-weight:500;width:100%;margin-top:6px}
+.drive-btn:hover{background:#3574d4}
+.out-row{display:flex;gap:5px}
+.out-btn{flex:1;padding:7px;font-size:11px;border:1px solid #e0e0e0;border-radius:6px;background:#fff;cursor:pointer;color:#666;font-family:inherit;text-align:center}
+.out-btn.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.name-row{display:flex;gap:5px;align-items:center}
+.name-row input{flex:1}
+.name-row span{font-size:11px;color:#aaa;flex-shrink:0}
+.reset-link{font-size:10px;color:#bbb;background:none;border:none;cursor:pointer;padding:0;font-family:inherit;text-decoration:underline}
+.smsg{font-size:11px;min-height:14px;text-align:center;margin-top:4px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js" onerror="console.warn('heic2any not loaded')"></script>
+</head>
+<body>
+
+<div class="header">
+  <h1>iBao 商品圖編輯器</h1>
+  <span class="tag" id="sizeTag">未選尺寸</span>
+</div>
+
+<div class="layout">
+
+  <!-- 左側步驟列 -->
+  <div class="steps">
+    <div class="step-item active" onclick="goStep(0)" id="s0">
+      <div class="step-num">STEP 1</div>
+      <div class="step-name">載入圖片</div>
+    </div>
+    <div class="step-item" onclick="goStep(1)" id="s1">
+      <div class="step-num">STEP 2</div>
+      <div class="step-name">選擇尺寸</div>
+    </div>
+    <div class="step-item" onclick="goStep(2)" id="s2">
+      <div class="step-num">STEP 3</div>
+      <div class="step-name">調光</div>
+    </div>
+    <div class="step-item" onclick="goStep(3)" id="s3">
+      <div class="step-num">STEP 4</div>
+      <div class="step-name">去背 / 背景</div>
+    </div>
+    <div class="step-item" onclick="goStep(4)" id="s4">
+      <div class="step-num">STEP 5</div>
+      <div class="step-name">品牌文字</div>
+    </div>
+    <div class="step-item" onclick="goStep(5)" id="s5">
+      <div class="step-num">STEP 6</div>
+      <div class="step-name">存檔</div>
+    </div>
+  </div>
+
+  <!-- 中間預覽 -->
+  <div class="preview-area" id="previewArea">
+    <div class="empty-hint" id="emptyHint">
+      <div class="icon">🖼</div>
+      <p>先從 Step 1 載入圖片</p>
+    </div>
+    <div class="canvas-container" id="canvasContainer" style="display:none">
+      <canvas id="cv"></canvas>
+    </div>
+    <div class="zoom-bar" id="zoomBar" style="display:none">
+      <button onclick="changeZoom(-0.1)">−</button>
+      <span id="zoomLabel">100%</span>
+      <button onclick="changeZoom(0.1)">+</button>
+      <button onclick="resetZoom()" style="font-size:10px;margin-left:4px">重置</button>
+    </div>
+  </div>
+
+  <!-- 右側工具 -->
+  <div class="tools">
+
+    <!-- Step 1: 載入 -->
+    <div class="tool-panel active" id="p0">
+      <div class="section">
+        <div class="sec-title">本機上傳</div>
+        <div class="upload-area" onclick="document.getElementById('fi').click()">
+          ↑ 點擊上傳圖片
+          <input type="file" id="fi" accept="image/*,.heic,.heif" style="display:none">
+        </div>
+      </div>
+      <div class="section">
+        <div class="sec-title">Google Drive 網址</div>
+        <div class="url-row">
+          <input type="text" id="driveUrl" placeholder="貼上分享連結…">
+          <button onclick="loadDrive()">載入</button>
+        </div>
+        <div class="dmsg" id="driveMsg"></div>
+      </div>
+      <button class="next-btn" onclick="goStep(1)">下一步 →</button>
+    </div>
+
+    <!-- Step 2: 尺寸 -->
+    <div class="tool-panel" id="p1">
+      <div class="section">
+        <div class="sec-title">選擇輸出尺寸</div>
+        <div class="size-grid">
+          <div class="size-card on" id="sz0" onclick="setSize(1080,1080,this)">
+            <div class="ratio">1:1</div>
+            <div class="dim">1080 × 1080</div>
+          </div>
+          <div class="size-card" id="sz1" onclick="setSize(1000,569,this)">
+            <div class="ratio">官網</div>
+            <div class="dim">1000 × 569</div>
+          </div>
+          <div class="size-card" id="sz2" onclick="setSize(1080,1350,this)">
+            <div class="ratio">4:5</div>
+            <div class="dim">1080 × 1350</div>
+          </div>
+          <div class="size-card" id="sz3" onclick="setSize(1200,628,this)">
+            <div class="ratio">16:9</div>
+            <div class="dim">1200 × 628</div>
+          </div>
+        </div>
+      </div>
+      <button class="next-btn" onclick="goStep(2)">下一步 →</button>
+    </div>
+
+    <!-- Step 3: 調光 -->
+    <div class="tool-panel" id="p2">
+      <div class="section">
+        <div class="sec-title">調光色彩</div>
+        <div class="slr"><label>亮度</label><input type="range" min="50" max="150" step="1" id="sBright" value="100" oninput="updS(this,'vBright');draw()"><span id="vBright">100</span></div>
+        <div class="slr"><label>對比</label><input type="range" min="50" max="150" step="1" id="sContrast" value="100" oninput="updS(this,'vContrast');draw()"><span id="vContrast">100</span></div>
+        <div class="slr"><label>飽和度</label><input type="range" min="0" max="200" step="1" id="sSat" value="100" oninput="updS(this,'vSat');draw()"><span id="vSat">100</span></div>
+        <button class="reset-link" onclick="resetLight()">重置</button>
+      </div>
+      <button class="next-btn" onclick="goStep(3)">下一步 →</button>
+    </div>
+
+    <!-- Step 4: 去背/背景 -->
+    <div class="tool-panel" id="p3">
+
+      <div class="section">
+        <div class="sec-title">仿製印章</div>
+        <p style="font-size:11px;color:#888;margin-bottom:8px">①「選來源」模式點乾淨區域 → ②「塗抹」模式塗要消除的地方</p>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+          <span style="font-size:11px;color:#666;width:44px;flex-shrink:0">筆刷大小</span>
+          <input type="range" min="5" max="80" step="1" id="brushSize" value="24" oninput="document.getElementById('brushSizeVal').textContent=this.value" style="flex:1;accent-color:#1a1a1a">
+          <span style="font-size:11px;color:#aaa;width:24px" id="brushSizeVal">24</span>
+        </div>
+        <div class="btn-row" style="margin-bottom:6px">
+          <button class="btn on" id="modeSource" onclick="setStampMode('source')">① 選來源</button>
+          <button class="btn" id="modeStamp" onclick="setStampMode('stamp')">② 塗抹</button>
+          <button class="btn" id="modeOff" onclick="setStampMode('off')">關閉</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn" onclick="undoHeal()">↩ 復原</button>
+        </div>
+        <div id="stampStatus" style="font-size:11px;color:#888;margin-top:6px">請先點選來源點</div>
+      </div>
+      <div class="section">
+        <div class="sec-title">AI 去背</div>
+        <p style="font-size:11px;color:#888;margin-bottom:10px">使用 AI 自動去除背景，去背完成後才能套用背景顏色</p>
+        <button class="next-btn" style="margin:0;background:#1a1a1a" onclick="doBgRemove()">✦ 一鍵去背</button>
+        <div class="smsg" id="bgRemoveMsg" style="margin-top:6px"></div>
+      </div>
+      <div class="section" id="bgSection" style="opacity:.4;pointer-events:none">
+        <div class="sec-title">套用背景 <span style="font-size:9px;color:#aaa">（去背後解鎖）</span></div>
+        <div class="btn-row">
+          <button class="btn on" id="bgW" onclick="setBg('white',this)">白底</button>
+          <button class="btn" id="bgT" onclick="setBg('transparent',this)">透明</button>
+          <button class="btn" id="bgB" onclick="setBg('black',this)">黑底</button>
+          <button class="btn" id="bgC" onclick="setBg('custom',this)">自訂色</button>
+        </div>
+        <input type="color" id="customBgColor" value="#f5f4f0" style="margin-top:8px;width:100%;height:32px;border-radius:6px;border:1px solid #e0e0e0;cursor:pointer" oninput="if(bgMode==='custom')draw()">
+      </div>
+      <button class="next-btn" onclick="goStep(4)">下一步 →</button>
+    </div>
+
+    <!-- Step 5: 品牌文字 -->
+    <div class="tool-panel" id="p4">
+      <div class="section">
+        <div class="sec-title">品牌文字</div>
+        <div class="fl"><label>品牌</label><input type="text" id="inBrand" placeholder="Hermès" oninput="draw()"></div>
+        <div class="fl"><label>包名</label><input type="text" id="inPkg" placeholder="Kelly 25" oninput="draw()"></div>
+        <div class="slr"><label>上下位置</label><input type="range" min="-200" max="200" step="1" id="sTextY" value="-30" oninput="updS(this,'vTextY');draw()"><span id="vTextY">-30</span></div>
+        <div class="btn-row" style="margin-top:4px">
+          <button class="btn on" id="twOn" onclick="setTxt(true)">顯示</button>
+          <button class="btn" id="twOff" onclick="setTxt(false)">隱藏</button>
+        </div>
+      </div>
+      <button class="next-btn" onclick="goStep(5)">下一步 →</button>
+    </div>
+
+    <!-- Step 6: 存檔 -->
+    <div class="tool-panel" id="p5">
+      <div class="section">
+        <div class="sec-title">存檔設定</div>
+        <div class="fl">
+          <label>檔名（必填）</label>
+          <div class="name-row">
+            <input type="text" id="fileName" placeholder="請輸入檔名" class="fl" style="margin:0">
+            <span id="extLbl">.jpg</span>
+          </div>
+        </div>
+        <div class="out-row" style="margin-top:6px">
+          <button class="out-btn on" id="oJpg" onclick="setExt('jpg',this)">JPG</button>
+          <button class="out-btn" id="oPng" onclick="setExt('png',this)">PNG</button>
+        </div>
+        <button class="save-btn" onclick="doSave('local')">↓ 存到電腦</button>
+        <button class="drive-btn" onclick="doSave('drive')">▲ 存到 Google Drive</button>
+        <div class="smsg" id="saveMsg"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+var img = null;
+var outW = 1080, outH = 1080;
+var bgMode = 'white';
+var showTxt = true;
+var outExt = 'jpg';
+var imgX = 0, imgY = 0, imgScale = 1;
+var isDragging = false, dragStartX, dragStartY, dragImgX, dragImgY, dragMoved=false;
+var viewScale = 1; // preview scale
+
+// Step nav
+function goStep(n){
+  for(var i=0;i<6;i++){
+    document.getElementById('s'+i).classList.remove('active');
+    document.getElementById('p'+i).classList.remove('active');
+  }
+  document.getElementById('s'+n).classList.add('active');
+  document.getElementById('p'+n).classList.add('active');
+}
+
+// 上傳
+document.getElementById('fi').onchange = function(e){
+  var f = e.target.files[0]; if(!f) return;
+  var isHeic = f.name.toLowerCase().endsWith('.heic') || f.name.toLowerCase().endsWith('.heif') || f.type === 'image/heic' || f.type === 'image/heif';
+  if(isHeic){
+    var msg = document.getElementById('driveMsg');
+    if(typeof heic2any === 'undefined'){
+      msg.className='dmsg ng'; msg.textContent='HEIC 不支援，請先轉成 JPG';
+      return;
+    }
+    msg.className='dmsg'; msg.textContent='HEIC 轉換中…';
+    heic2any({blob: f, toType: 'image/jpeg', quality: 0.92}).then(function(result){
+      var converted = Array.isArray(result) ? result[0] : result;
+      var r = new FileReader();
+      r.onload = function(ev){
+        var im = new Image();
+        im.onload = function(){ img=im; resetImgPos(); showCanvas(); draw(); goStep(1); msg.textContent=''; };
+        im.src = ev.target.result;
+      };
+      r.readAsDataURL(converted);
+    }).catch(function(e){
+      msg.className='dmsg ng'; msg.textContent='HEIC 轉換失敗，請先轉成 JPG';
+    });
+    return;
+  }
+  var r = new FileReader();
+  r.onload = function(ev){
+    var im = new Image();
+    im.onload = function(){ img = im; resetImgPos(); showCanvas(); draw(); goStep(1); };
+    im.src = ev.target.result;
+  };
+  r.readAsDataURL(f);
+};
+
+// Drive
+function exId(url){
+  var m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : (/^[a-zA-Z0-9_-]{20,}$/.test(url.trim()) ? url.trim() : null);
+}
+function loadDrive(){
+  var url = document.getElementById('driveUrl').value.trim();
+  var msg = document.getElementById('driveMsg');
+  msg.className='dmsg'; msg.textContent='';
+  if(!url){msg.className='dmsg ng';msg.textContent='請貼網址';return;}
+  var fid = exId(url);
+  if(!fid){msg.className='dmsg ng';msg.textContent='無法解析';return;}
+  msg.textContent='載入中…';
+  var urls=[
+    'https://drive.google.com/thumbnail?id='+fid+'&sz=w1200',
+    'https://lh3.googleusercontent.com/d/'+fid,
+    'https://drive.google.com/uc?export=view&id='+fid
+  ];
+  function try_(i){
+    if(i>=urls.length){msg.className='dmsg ng';msg.textContent='失敗，請改用上傳';return;}
+    var im=new Image();im.crossOrigin='anonymous';
+    im.onload=function(){img=im;resetImgPos();showCanvas();draw();msg.className='dmsg ok';msg.textContent='✓ 已載入';document.getElementById('driveUrl').value='';goStep(1);};
+    im.onerror=function(){try_(i+1);};
+    im.src=urls[i];
+  }
+  try_(0);
+}
+
+function showCanvas(){
+  document.getElementById('emptyHint').style.display='none';
+  document.getElementById('canvasContainer').style.display='block';
+  document.getElementById('zoomBar').style.display='flex';
+}
+
+// 尺寸選擇
+function setSize(w,h,btn){
+  outW=w; outH=h;
+  document.querySelectorAll('.size-card').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  document.getElementById('sizeTag').textContent=w+'×'+h;
+  resetImgPos();
+  draw();
+}
+
+function resetImgPos(){
+  if(!img) return;
+  // 讓圖片 cover 填滿框
+  var sc = Math.max(outW/img.naturalWidth, outH/img.naturalHeight);
+  imgScale = sc;
+  imgX = (outW - img.naturalWidth*sc)/2;
+  imgY = (outH - img.naturalHeight*sc)/2;
+  updateZoomLabel();
+}
+
+// 縮放
+function changeZoom(delta){
+  imgScale = Math.max(0.1, Math.min(5, imgScale+delta));
+  draw(); updateZoomLabel();
+}
+function resetZoom(){ resetImgPos(); draw(); }
+function updateZoomLabel(){
+  if(!img) return;
+  var base = Math.max(outW/img.naturalWidth, outH/img.naturalHeight);
+  var pct = Math.round(imgScale/base*100);
+  document.getElementById('zoomLabel').textContent=pct+'%';
+}
+
+// 拖移
+var cc = document.getElementById('canvasContainer');
+cc.addEventListener('mousedown',function(e){
+  if(!img) return;
+  var rect=cc.getBoundingClientRect();
+  var cx=(e.clientX-rect.left)/viewScale;
+  var cy=(e.clientY-rect.top)/viewScale;
+  // 轉成圖片座標
+  var ix=(cx-imgX)/imgScale;
+  var iy=(cy-imgY)/imgScale;
+
+  if(stampMode==='source'){
+    sourcePoint={x:Math.round(ix),y:Math.round(iy)};
+    var status=document.getElementById('stampStatus');
+    status.textContent='來源點已選取，切換到「塗抹」模式開始消除';
+    status.style.color='#2e7d32';
+    // 畫來源點標記
+    draw();
+    var cv2=document.getElementById('cv');
+    var ctx2=cv2.getContext('2d');
+    ctx2.save();
+    ctx2.strokeStyle='#ff0000';
+    ctx2.lineWidth=2;
+    ctx2.beginPath();
+    ctx2.arc(cx*viewScale,cy*viewScale,8,0,Math.PI*2);
+    ctx2.stroke();
+    ctx2.beginPath();
+    ctx2.moveTo(cx*viewScale-12,cy*viewScale);
+    ctx2.lineTo(cx*viewScale+12,cy*viewScale);
+    ctx2.moveTo(cx*viewScale,cy*viewScale-12);
+    ctx2.lineTo(cx*viewScale,cy*viewScale+12);
+    ctx2.stroke();
+    ctx2.restore();
+    e.preventDefault(); return;
+  }
+  if(stampMode==='stamp'){
+    if(!sourcePoint){
+      document.getElementById('stampStatus').textContent='請先選取來源點';
+      document.getElementById('stampStatus').style.color='#c0392b';
+      return;
+    }
+    stamping=true;
+    healHistory.push(img.src?img:null);
+    // 儲存當前狀態
+    var snapCv=document.createElement('canvas');
+    snapCv.width=img.naturalWidth;snapCv.height=img.naturalHeight;
+    snapCv.getContext('2d').drawImage(img,0,0);
+    var snapImg=new Image();snapImg.src=snapCv.toDataURL('image/png');
+    healHistory[healHistory.length-1]=snapImg;
+    applyStamp(Math.round(ix),Math.round(iy));
+    e.preventDefault(); return;
+  }
+  if(stampMode !== 'off'){
+    // 印章模式下也可以拖移（按住移動超過5px才算拖移）
+    isDragging=true; dragStartX=e.clientX; dragStartY=e.clientY;
+    dragImgX=imgX; dragImgY=imgY; dragMoved=false;
+  } else {
+    isDragging=true; dragStartX=e.clientX; dragStartY=e.clientY;
+    dragImgX=imgX; dragImgY=imgY;
+  }
+  e.preventDefault();
+});
+
+window.addEventListener('mousemove',function(e){
+  if(stampMode==='stamp' && stamping){
+    var rect=cc.getBoundingClientRect();
+    var cx=(e.clientX-rect.left)/viewScale;
+    var cy=(e.clientY-rect.top)/viewScale;
+    var ix=(cx-imgX)/imgScale;
+    var iy=(cy-imgY)/imgScale;
+    applyStamp(Math.round(ix),Math.round(iy));
+    return;
+  }
+  if(isDragging){
+    var dx=e.clientX-dragStartX, dy=e.clientY-dragStartY;
+    if(Math.abs(dx)>3||Math.abs(dy)>3) dragMoved=true;
+    if(stampMode==='off'||dragMoved){
+      imgX=dragImgX+dx/viewScale; imgY=dragImgY+dy/viewScale;
+      draw();
+    }
+  }
+});
+
+window.addEventListener('mouseup',function(){
+  stamping=false;
+  isDragging=false;
+  dragMoved=false;
+});
+
+// 滾輪縮放
+cc.addEventListener('wheel',function(e){
+  e.preventDefault();
+  var delta = e.deltaY > 0 ? -0.05 : 0.05;
+  // 以滑鼠位置為中心縮放
+  var rect=cc.getBoundingClientRect();
+  var mx=(e.clientX-rect.left)/viewScale;
+  var my=(e.clientY-rect.top)/viewScale;
+  var oldScale=imgScale;
+  imgScale=Math.max(0.1,Math.min(5,imgScale+delta));
+  // 調整位置讓縮放中心固定
+  imgX=mx-(mx-imgX)*imgScale/oldScale;
+  imgY=my-(my-imgY)*imgScale/oldScale;
+  draw(); updateZoomLabel();
+},{passive:false});
+
+function updS(el,vid){document.getElementById(vid).textContent=el.value;}
+function resetLight(){
+  document.getElementById('sBright').value=100;document.getElementById('vBright').textContent=100;
+  document.getElementById('sContrast').value=100;document.getElementById('vContrast').textContent=100;
+  document.getElementById('sSat').value=100;document.getElementById('vSat').textContent=100;
+  draw();
+}
+function setBg(m,btn){
+  bgMode=m;
+  document.querySelectorAll('#bgW,#bgT,#bgB').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on'); draw();
+}
+function setTxt(v){
+  showTxt=v;
+  document.getElementById('twOn').classList.toggle('on',v);
+  document.getElementById('twOff').classList.toggle('on',!v);
+  draw();
+}
+function setExt(ext,btn){
+  outExt=ext;
+  document.getElementById('oJpg').classList.toggle('on',ext==='jpg');
+  document.getElementById('oPng').classList.toggle('on',ext==='png');
+  document.getElementById('extLbl').textContent='.'+ext;
+}
+
+function draw(){
+  if(!img) return;
+  document.fonts.ready.then(function(){_draw();});
+}
+
+function _draw(){
+  var cv = document.getElementById('cv');
+  var area = document.getElementById('previewArea');
+  var aw = area.offsetWidth-32, ah = area.offsetHeight-32;
+  viewScale = Math.min(aw/outW, ah/outH);
+  var dW = Math.round(outW*viewScale), dH = Math.round(outH*viewScale);
+  cv.width=dW; cv.height=dH;
+  cv.style.width=dW+'px'; cv.style.height=dH+'px';
+  var ctx=cv.getContext('2d');
+
+  // 背景
+  if(bgMode==='white'){ctx.fillStyle='#fff';ctx.fillRect(0,0,dW,dH);}
+  else if(bgMode==='black'){ctx.fillStyle='#000';ctx.fillRect(0,0,dW,dH);}
+  else if(bgMode==='custom'){ctx.fillStyle=document.getElementById('customBgColor').value;ctx.fillRect(0,0,dW,dH);}
+  else{ctx.clearRect(0,0,dW,dH);drawChecker(ctx,dW,dH);}
+
+  // 圖片
+  var bright=+document.getElementById('sBright').value;
+  var contrast=+document.getElementById('sContrast').value;
+  var sat=+document.getElementById('sSat').value;
+  ctx.filter='brightness('+bright+'%) contrast('+contrast+'%) saturate('+sat+'%)';
+  ctx.save();
+  ctx.beginPath();ctx.rect(0,0,dW,dH);ctx.clip();
+  ctx.drawImage(img, imgX*viewScale, imgY*viewScale, img.naturalWidth*imgScale*viewScale, img.naturalHeight*imgScale*viewScale);
+  ctx.restore();
+  ctx.filter='none';
+
+  // 文字
+  if(showTxt){
+    var brand=document.getElementById('inBrand').value;
+    var pkg=document.getElementById('inPkg').value;
+    if(brand||pkg){
+      var text=(brand&&pkg)?brand+'  '+pkg:(brand||pkg);
+      var textY=+document.getElementById('sTextY').value;
+      var fs=Math.round(44*viewScale);
+      ctx.font='400 '+fs+'px "Playfair Display",Georgia,serif';
+      var tw=ctx.measureText(text).width;
+      var th=fs;
+      var tx=(dW-tw)/2;
+      var ty=dH/2+(textY*viewScale);
+      var blockW=dW*0.5;
+      var blockH=th*1.8;
+      var blockCX=dW/2;
+      var blockTop=ty-blockH/2;
+      ctx.fillStyle='rgba(255,255,255,0.70)';
+      ctx.fillRect(blockCX-blockW/2,blockTop,blockW,blockH);
+      ctx.textAlign='center';
+      ctx.fillStyle='rgba(26,26,26,0.90)';
+      ctx.fillText(text,blockCX,blockTop+blockH*0.65+5*viewScale);
+    }
+  }
+}
+
+function drawChecker(ctx,w,h){
+  var s=12;
+  for(var y=0;y<h;y+=s){for(var x=0;x<w;x+=s){
+    ctx.fillStyle=((x/s+y/s)%2===0)?'#ccc':'#eee';
+    ctx.fillRect(x,y,s,s);
+  }}
+}
+
+function doSave(target){
+  var name=document.getElementById('fileName').value.trim();
+  var msg=document.getElementById('saveMsg');
+  if(!name){msg.style.color='#c0392b';msg.textContent='請先填寫檔名';document.getElementById('fileName').focus();return;}
+  msg.textContent='';
+  // 產出原始尺寸
+  var cv2=document.createElement('canvas');cv2.width=outW;cv2.height=outH;
+  var ctx=cv2.getContext('2d');
+  if(bgMode==='white'){ctx.fillStyle='#fff';ctx.fillRect(0,0,outW,outH);}
+  else if(bgMode==='black'){ctx.fillStyle='#000';ctx.fillRect(0,0,outW,outH);}
+  else if(bgMode==='custom'){ctx.fillStyle=document.getElementById('customBgColor').value;ctx.fillRect(0,0,outW,outH);}
+  var bright=+document.getElementById('sBright').value;
+  var contrast=+document.getElementById('sContrast').value;
+  var sat=+document.getElementById('sSat').value;
+  ctx.filter='brightness('+bright+'%) contrast('+contrast+'%) saturate('+sat+'%)';
+  ctx.save();ctx.beginPath();ctx.rect(0,0,outW,outH);ctx.clip();
+  ctx.drawImage(img,imgX,imgY,img.naturalWidth*imgScale,img.naturalHeight*imgScale);
+  ctx.restore();ctx.filter='none';
+  if(showTxt){
+    var brand=document.getElementById('inBrand').value;
+    var pkg=document.getElementById('inPkg').value;
+    if(brand||pkg){
+      var text=(brand&&pkg)?brand+'  '+pkg:(brand||pkg);
+      var textY=+document.getElementById('sTextY').value;
+      ctx.font='400 44px "Playfair Display",Georgia,serif';
+      var tw=ctx.measureText(text).width;
+      var th=44;
+      var tx=(outW-tw)/2;
+      var ty=outH/2+textY;
+      var blockW=outW*0.5;
+      var blockH=th*1.8;
+      var blockCX=outW/2;
+      var blockTop=ty-blockH/2;
+      ctx.fillStyle='rgba(255,255,255,0.70)';
+      ctx.fillRect(blockCX-blockW/2,blockTop,blockW,blockH);
+      ctx.textAlign='center';
+      ctx.fillStyle='rgba(26,26,26,0.90)';
+      ctx.fillText(text,blockCX,blockTop+blockH*0.65+5);
+    }
+  }
+  if(target==='local'){
+    var mime=outExt==='png'?'image/png':'image/jpeg';
+    var a=document.createElement('a');
+    a.download=name+'.'+outExt;
+    a.href=cv2.toDataURL(mime,0.93);
+    a.click();
+    msg.style.color='#2e7d32';msg.textContent='✓ 已下載 '+name+'.'+outExt;
+  } else {
+    cv2.toBlob(function(blob){
+      if(!window._gdriveToken){
+        msg.style.color='#888';msg.textContent='跳出 Google 登入…';
+        var client=google.accounts.oauth2.initTokenClient({
+          client_id:'999765668036-hgeritojptqndlh2fi2ht005jant5ai5.apps.googleusercontent.com',
+          scope:'https://www.googleapis.com/auth/drive.file',
+          callback:function(resp){
+            if(resp.error){msg.style.color='#c0392b';msg.textContent='登入失敗';return;}
+            window._gdriveToken=resp.access_token;
+            uploadToDrive(blob,name,msg);
+          }
+        });
+        client.requestAccessToken();
+      } else { uploadToDrive(blob,name,msg); }
+    },outExt==='png'?'image/png':'image/jpeg',0.93);
+  }
+}
+
+function uploadToDrive(blob,name,msg){
+  msg.style.color='#888';msg.textContent='上傳中…';
+  var meta={name:name+'.'+outExt,mimeType:outExt==='png'?'image/png':'image/jpeg'};
+  var form=new FormData();
+  form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+  form.append('file',blob);
+  fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{
+    method:'POST',headers:{Authorization:'Bearer '+window._gdriveToken},body:form
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.id){msg.style.color='#2e7d32';msg.textContent='✓ 已上傳到 Drive';}
+    else{msg.style.color='#c0392b';msg.textContent='上傳失敗';}
+  }).catch(function(){msg.style.color='#c0392b';msg.textContent='上傳失敗';});
+}
+
+// 仿製印章
+var stampMode = 'source'; // 'source' | 'stamp' | 'off'
+var sourcePoint = null; // {x, y} 在圖片座標
+var stamping = false;
+var healHistory = [];
+
+function setStampMode(mode){
+  stampMode = mode;
+  document.getElementById('modeSource').classList.toggle('on', mode==='source');
+  document.getElementById('modeStamp').classList.toggle('on', mode==='stamp');
+  document.getElementById('modeOff').classList.toggle('on', mode==='off');
+  var cc = document.getElementById('canvasContainer');
+  if(mode==='off') cc.style.cursor='grab';
+  else if(mode==='source') cc.style.cursor='crosshair';
+  else cc.style.cursor='cell';
+  var status = document.getElementById('stampStatus');
+  if(mode==='source') status.textContent='點擊選取來源點';
+  else if(mode==='stamp' && !sourcePoint) status.textContent='請先選取來源點';
+  else if(mode==='stamp') status.textContent='在要消除的地方塗抹';
+  else status.textContent='';
+}
+
+function undoHeal(){
+  if(healHistory.length===0) return;
+  img=healHistory.pop(); draw();
+}
+
+function applyStamp(targetX, targetY){
+  if(!sourcePoint) return;
+  var bSize=+document.getElementById('brushSize').value;
+  var wCv=document.createElement('canvas');
+  wCv.width=img.naturalWidth; wCv.height=img.naturalHeight;
+  var wCtx=wCv.getContext('2d');
+  wCtx.drawImage(img,0,0);
+  var idata=wCtx.getImageData(0,0,wCv.width,wCv.height);
+  var pixels=idata.data;
+  var W=wCv.width, H=wCv.height;
+  var r=Math.round(bSize);
+  for(var dy=-r;dy<=r;dy++){
+    for(var dx=-r;dx<=r;dx++){
+      if(dx*dx+dy*dy>r*r) continue;
+      // 來源像素
+      var sx=Math.round(sourcePoint.x+dx);
+      var sy=Math.round(sourcePoint.y+dy);
+      // 目標像素
+      var tx=Math.round(targetX+dx);
+      var ty=Math.round(targetY+dy);
+      if(sx<0||sy<0||sx>=W||sy>=H) continue;
+      if(tx<0||ty<0||tx>=W||ty>=H) continue;
+      // 邊緣羽化
+      var dist=Math.sqrt(dx*dx+dy*dy);
+      var alpha=1-Math.pow(dist/r,2);
+      var si=(sy*W+sx)*4;
+      var ti=(ty*W+tx)*4;
+      pixels[ti]=Math.round(pixels[ti]*(1-alpha)+pixels[si]*alpha);
+      pixels[ti+1]=Math.round(pixels[ti+1]*(1-alpha)+pixels[si+1]*alpha);
+      pixels[ti+2]=Math.round(pixels[ti+2]*(1-alpha)+pixels[si+2]*alpha);
+    }
+  }
+  wCtx.putImageData(idata,0,0);
+  var newImg=new Image();
+  newImg.onload=function(){img=newImg;draw();};
+  newImg.src=wCv.toDataURL('image/png');
+}
+
+// 畫布上的互動
+var brushStrokes=[];
+var brushing=false;
+
+// 去背
+var removedBgImg = null;
+var bgRemoved = false;
+
+function doBgRemove(){
+  if(!img){
+    document.getElementById('bgRemoveMsg').style.color='#c0392b';
+    document.getElementById('bgRemoveMsg').textContent='請先載入圖片';
+    return;
+  }
+  var msg = document.getElementById('bgRemoveMsg');
+  msg.style.color='#888'; msg.textContent='AI 去背中…';
+
+  // 把圖片轉成 blob 送 API
+  var cv2 = document.createElement('canvas');
+  cv2.width = img.naturalWidth; cv2.height = img.naturalHeight;
+  var ctx2 = cv2.getContext('2d');
+  ctx2.drawImage(img, 0, 0);
+  cv2.toBlob(function(blob){
+    var form = new FormData();
+    form.append('image_file', blob, 'image.png');
+    fetch('https://api.poof.bg/v1/remove', {
+      method: 'POST',
+      headers: { 'X-Api-Key': 'pk_021bf933ade26d3af0fa289ee17671b4' },
+      body: form
+    }).then(function(r){
+      if(!r.ok) throw new Error('API error '+r.status);
+      return r.blob();
+    }).then(function(resultBlob){
+      var url = URL.createObjectURL(resultBlob);
+      var im = new Image();
+      im.onload = function(){
+        // 邊緣柔化處理
+        var tmpCv = document.createElement('canvas');
+        tmpCv.width = im.naturalWidth; tmpCv.height = im.naturalHeight;
+        var tmpCtx = tmpCv.getContext('2d');
+        tmpCtx.drawImage(im, 0, 0);
+        // 取得像素做邊緣羽化
+        var idata = tmpCtx.getImageData(0, 0, tmpCv.width, tmpCv.height);
+        var data = idata.data;
+        var w = tmpCv.width, h = tmpCv.height;
+        var radius = 1; // 羽化半徑
+        // 對每個半透明邊緣像素做平滑
+        for(var y=radius;y<h-radius;y++){
+          for(var x=radius;x<w-radius;x++){
+            var idx=(y*w+x)*4;
+            var alpha=data[idx+3];
+            if(alpha>0 && alpha<255){
+              // 周圍像素平均alpha
+              var sum=0, count=0;
+              for(var dy=-radius;dy<=radius;dy++){
+                for(var dx=-radius;dx<=radius;dx++){
+                  var ni=((y+dy)*w+(x+dx))*4;
+                  sum+=data[ni+3]; count++;
+                }
+              }
+              data[idx+3]=Math.round(sum/count);
+            }
+          }
+        }
+        tmpCtx.putImageData(idata,0,0);
+        // 轉成新圖
+        var smoothed = new Image();
+        smoothed.onload = function(){
+          removedBgImg = smoothed;
+          bgRemoved = true;
+          img = smoothed;
+          resetImgPos();
+        // 解鎖背景區
+        document.getElementById('bgSection').style.opacity='1';
+        document.getElementById('bgSection').style.pointerEvents='auto';
+        // 預設白底
+        bgMode='white';
+        document.getElementById('bgW').classList.add('on');
+        draw();
+          msg.style.color='#2e7d32'; msg.textContent='✓ 去背完成！可以套用背景了';
+        };
+        smoothed.src = tmpCv.toDataURL('image/png');
+      };
+      im.src = url;
+    }).catch(function(e){
+      msg.style.color='#c0392b'; msg.textContent='去背失敗：'+e.message;
+    });
+  }, 'image/png');
+}
+
+// 自訂背景色
+function setBg(m,btn){
+  bgMode=m;
+  document.querySelectorAll('#bgW,#bgT,#bgB,#bgC').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  draw();
+}
+
+window.addEventListener('resize',function(){if(img)draw();});
+document.getElementById('sizeTag').textContent='1080×1080';
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</body>
+</html>
 
