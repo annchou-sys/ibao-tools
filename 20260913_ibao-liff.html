@@ -872,10 +872,20 @@ const style = document.createElement('style');
 style.textContent = '@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}';
 document.head.appendChild(style);
 
-// Init
+// Init — set welcome screen to actual visible viewport (LINE WebView fix)
+function setWelcomeHeight() {
+  const welcome = document.getElementById('s-welcome');
+  if (!welcome) return;
+  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  welcome.style.height = h + 'px';
+}
 window.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('notice-nogear').classList.remove('show');
   goTo('s-welcome');
+  setWelcomeHeight();
 });
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', setWelcomeHeight);
+}
 goTo('s-welcome');
 </script>
