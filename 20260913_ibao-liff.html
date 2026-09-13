@@ -41,9 +41,9 @@ body{font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;backgro
 .announce-bar{background:var(--m-red);color:#FFFFFF;font-size:10px;letter-spacing:.18em;text-align:center;padding:8px 20px;position:sticky;top:0;z-index:200;font-family:'Oswald',sans-serif;font-weight:400;text-transform:uppercase;border-bottom:3px solid #0D0D0D}
 
 /* Welcome */
-#s-welcome{display:none;flex-direction:column;align-items:center;text-align:center;padding:0 0 0;background:none;width:100%}
+#s-welcome{display:none;flex-direction:column;align-items:center;text-align:center;padding:0 0 0;background:none;width:100%;overflow:hidden}
 #s-welcome.active{display:flex}
-.w-hero{width:100%;flex:none;min-height:58dvh;min-height:58vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 28px 32px;background:var(--m-blue);position:relative;overflow:hidden;border-bottom:4px solid #0D0D0D}
+.w-hero{width:100%;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 28px 32px;background:var(--m-blue);position:relative;overflow:hidden;border-bottom:4px solid #0D0D0D}
 /* Mondrian corner blocks */
 .w-hero::before{content:'';position:absolute;top:0;right:0;width:80px;height:80px;background:#FFFFFF;pointer-events:none}
 .w-hero::after{content:'';position:absolute;bottom:0;left:0;width:48px;height:48px;background:#FFFFFF;pointer-events:none}
@@ -878,9 +878,17 @@ style.textContent = '@keyframes shake{0%,100%{transform:translateX(0)}25%{transf
 document.head.appendChild(style);
 
 // Init
+function fitWelcome() {
+  const bar = document.querySelector('.announce-bar');
+  const barH = bar ? bar.getBoundingClientRect().height : 0;
+  const welcome = document.getElementById('s-welcome');
+  if (welcome) welcome.style.height = (window.innerHeight - barH) + 'px';
+}
 window.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('notice-nogear').classList.remove('show');
   goTo('s-welcome');
+  fitWelcome();
+  window.addEventListener('resize', fitWelcome);
 });
 goTo('s-welcome');
 </script>
